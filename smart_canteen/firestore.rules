@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSeller() {
+      return signedIn() && myProfile().role == 'penjual';
+    }
+
+    // 1. Koleksi Users
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'siswa'
+        && request.resource.data.keys().hasOnly([
+          'nama', 'email', 'role', 'kelas', 'standId', 'createdAt', 'updatedAt'
+        ]);
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['nama', 'kelas', 'updatedAt']);
+      allow delete: if false;
+
+      match /devices/{deviceId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
+    // 2. Koleksi Stands
+    match /stands/{standId} {
+      allow read: if signedIn();
+      // Hanya penjual penanggung jawab yang boleh mengupdate status buka/tutup standnya
+      allow update: if isSeller() && resource.data.penjualId == request.auth.uid;
+      allow create, delete: if false; // Stand didaftarkan oleh admin
+    }
+
+    // 3. Koleksi Menus
+    match /menus/{menuId} {
+      allow read: if signedIn();
+
+      // Penjual hanya dapat menambah menu untuk stand miliknya sendiri
+      allow create: if isSeller()
+        && request.resource.data.standId == myProfile().standId;
+
+      // Penjual dapat mengupdate menu miliknya, ATAU siswa dapat mengurangi stok secara atomik saat checkout
+      allow update: if (isSeller() && resource.data.standId == myProfile().standId)
+        || (signedIn()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'updatedAt'])
+            && request.resource.data.stock is number
+            && request.resource.data.stock >= 0
+            && request.resource.data.stock <= resource.data.stock);
+
+      // Penjual hanya dapat menghapus menu stand miliknya
+      allow delete: if isSeller()
+        && resource.data.standId == myProfile().standId;
+    }
+
+    // 4. Koleksi Orders (1 Dokumen = 1 Stand)
+    match /orders/{orderId} {
+      // Siswa hanya bisa membaca pesanannya sendiri.
+      // Penjual hanya bisa membaca pesanan yang ditujukan ke stand miliknya.
+      allow read: if signedIn() && (
+        resource.data.siswaId == request.auth.uid ||
+        (isSeller() && resource.data.standId == myProfile().standId)
+      );
+
+      // Siswa terautentikasi dapat membuat pesanan baru saat checkout (Metode Transaksi ACID)
+      allow create: if signedIn()
+        && request.resource.data.siswaId == request.auth.uid
+        && request.resource.data.status == 'menunggu'
+        && request.resource.data.paymentMethod == 'tunai_saat_ambil';
+
+      allow delete: if false;
+
+      // Hanya penjual dari stand bersangkutan yang dapat mengupdate alur status
+      allow update: if isSeller()
+        && resource.data.standId == myProfile().standId
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'updatedAt'])
+        && (
+          (resource.data.status == 'menunggu'
+            && request.resource.data.status == 'diproses')
+          || (resource.data.status == 'diproses'
+            && request.resource.data.status == 'siap_diambil')
+          || (resource.data.status == 'siap_diambil'
+            && request.resource.data.status == 'selesai')
+        );
+    }
+
+    // 5. Koleksi Counters (Nomor antrean sequential per stand)
+    match /counters/{counterId} {
+      allow read, write: if signedIn();
+    }
+  }
+}

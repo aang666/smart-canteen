@@ -1,0 +1,37 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.history
+.svn/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter/Dart related
+**/doc/api/
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/build/
+**/coverage/
+
+# Android build outputs
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+
+# Security & Private Keys (Pemeriksaan Repository LKPD)
+*.pem
+*.key
+*serviceAccount*.json
+.env*
+firebase-adminsdk*.json
