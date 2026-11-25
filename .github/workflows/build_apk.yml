@@ -1,9 +1,12 @@
-name: Build Android APK
+name: Build & Release Android APK
 
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -34,9 +37,29 @@ jobs:
         working-directory: smart_canteen
         run: flutter build apk --release --no-tree-shake-icons
 
+      - name: Copy & Rename APK
+        run: cp smart_canteen/build/app/outputs/flutter-apk/app-release.apk smart-canteen.apk
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: smart-canteen-release-apk
-          path: smart_canteen/build/app/outputs/flutter-apk/app-release.apk
+          path: smart-canteen.apk
           retention-days: 14
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v1.0.${{ github.run_number }}"
+          name: "Smart Canteen v1.0.${{ github.run_number }}"
+          body: |
+            ### 📱 Smart Canteen - Aplikasi Pemesanan Kantin Sekolah
+            File APK siap diinstal langsung di HP Android tanpa perlu login atau akun GitHub.
+            
+            **Cara Install:**
+            1. Klik dan unduh file **`smart-canteen.apk`** di bawah (bagian Assets).
+            2. Buka file yang sudah diunduh di HP dan pilih **Install**.
+          files: smart-canteen.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
