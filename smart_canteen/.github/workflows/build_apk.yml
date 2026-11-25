@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: # Memungkinkan tombol "Run workflow" manual di GitHub
+  workflow_dispatch:
 
 jobs:
   build:
@@ -27,14 +27,16 @@ jobs:
           cache: true
 
       - name: Get Dependencies
+        working-directory: smart_canteen
         run: flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release
+        working-directory: smart_canteen
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: smart-canteen-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: smart_canteen/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
