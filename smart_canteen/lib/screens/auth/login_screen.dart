@@ -217,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         },
                         child: const Text(
-                          'Daftar Siswa',
+                          'Daftar',
                           style: TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
