@@ -16,10 +16,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _namaController = TextEditingController();
   final _kelasController = TextEditingController();
+  final _namaStandController = TextEditingController();
+  final _deskripsiStandController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
 
+  String _selectedRole = 'siswa'; // 'siswa' atau 'penjual'
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
@@ -28,6 +31,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _namaController.dispose();
     _kelasController.dispose();
+    _namaStandController.dispose();
+    _deskripsiStandController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -42,16 +47,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      await _authService.registerStudent(
-        nama: _namaController.text,
-        email: _emailController.text,
-        password: _passwordController.text,
-        kelas: _kelasController.text,
-      );
+      if (_selectedRole == 'siswa') {
+        await _authService.registerStudent(
+          nama: _namaController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+          kelas: _kelasController.text,
+        );
+      } else {
+        await _authService.registerSeller(
+          nama: _namaController.text,
+          namaStand: _namaStandController.text,
+          deskripsiStand: _deskripsiStandController.text,
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
 
       if (mounted) {
-        // Setelah registrasi berhasil, AuthGate akan otomatis mengarahkan ke Dashboard Siswa.
-        // Jika masih di halaman registrasi, kita bisa pop kembali.
         if (Navigator.canPop(context)) {
           Navigator.pop(context);
         }
@@ -61,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (e.code == 'email-already-in-use') {
           _errorMessage = 'Email sudah terdaftar. Silakan login.';
         } else if (e.code == 'weak-password') {
-          _errorMessage = 'Kata sandi terlalu lemah.';
+          _errorMessage = 'Kata sandi terlalu lemah (minimal 6 karakter).';
         } else if (e.code == 'invalid-email') {
           _errorMessage = 'Format email tidak valid.';
         } else {
@@ -83,10 +96,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isSiswa = _selectedRole == 'siswa';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Daftar Akun Siswa'),
+        title: Text(isSiswa ? 'Daftar Akun Siswa' : 'Daftar Stand Penjual'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
@@ -101,18 +116,126 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Buat Akun Siswa',
-                    style: TextStyle(
+                  // Tab Pemilihan Role: Siswa vs Penjual
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedRole = 'siswa';
+                                _errorMessage = null;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSiswa ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: isSiswa
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.05),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.school_rounded,
+                                    size: 18,
+                                    color: isSiswa ? AppColors.primary : AppColors.textSecondary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Siswa',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: isSiswa ? FontWeight.bold : FontWeight.w500,
+                                      color: isSiswa ? AppColors.primary : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedRole = 'penjual';
+                                _errorMessage = null;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: !isSiswa ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: !isSiswa
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.05),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.storefront_rounded,
+                                    size: 18,
+                                    color: !isSiswa ? AppColors.primary : AppColors.textSecondary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Penjual Stand',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: !isSiswa ? FontWeight.bold : FontWeight.w500,
+                                      color: !isSiswa ? AppColors.primary : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Text(
+                    isSiswa ? 'Buat Akun Siswa' : 'Daftarkan Stand Kantin',
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Lengkapi data diri Anda untuk mulai memesan di kantin.',
-                    style: TextStyle(
+                  Text(
+                    isSiswa
+                        ? 'Lengkapi data diri Anda untuk mulai memesan di kantin.'
+                        : 'Lengkapi identitas pemilik dan stand Anda untuk mulai berjualan.',
+                    style: const TextStyle(
                       fontSize: 13.5,
                       color: AppColors.textSecondary,
                     ),
@@ -144,41 +267,73 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Nama Lengkap
+                  // Nama Lengkap / Nama Pemilik
                   CustomTextField(
                     controller: _namaController,
-                    label: 'Nama Lengkap',
-                    hint: 'Contoh: Ahmad Fauzi',
+                    label: isSiswa ? 'Nama Lengkap' : 'Nama Pemilik / Penjual',
+                    hint: isSiswa ? 'Contoh: Ahmad Fauzi' : 'Contoh: Ibu Siti Aminah',
                     prefixIcon: Icons.person_outline_rounded,
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) {
-                        return 'Nama lengkap wajib diisi';
+                        return isSiswa ? 'Nama lengkap wajib diisi' : 'Nama pemilik wajib diisi';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 16),
 
-                  // Kelas
-                  CustomTextField(
-                    controller: _kelasController,
-                    label: 'Kelas / Jurusan',
-                    hint: 'Contoh: XII RPL 2',
-                    prefixIcon: Icons.school_outlined,
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Kelas wajib diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
+                  // Khusus Siswa: Kelas
+                  if (isSiswa) ...[
+                    CustomTextField(
+                      controller: _kelasController,
+                      label: 'Kelas / Jurusan',
+                      hint: 'Contoh: XII RPL 2',
+                      prefixIcon: Icons.school_outlined,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Kelas wajib diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Khusus Penjual: Nama Stand & Deskripsi
+                  if (!isSiswa) ...[
+                    CustomTextField(
+                      controller: _namaStandController,
+                      label: 'Nama Stand Kantin',
+                      hint: 'Contoh: Dapur Sedap Bu Siti',
+                      prefixIcon: Icons.store_outlined,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Nama stand wajib diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      controller: _deskripsiStandController,
+                      label: 'Deskripsi Stand',
+                      hint: 'Contoh: Menyediakan aneka nasi, lauk pauk, dan es teh segar',
+                      prefixIcon: Icons.info_outline_rounded,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Deskripsi stand wajib diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Email
                   CustomTextField(
                     controller: _emailController,
                     label: 'Email',
-                    hint: 'nama@sekolah.sch.id',
+                    hint: isSiswa ? 'nama@sekolah.sch.id' : 'penjual@kantin.com',
                     keyboardType: TextInputType.emailAddress,
                     prefixIcon: Icons.email_outlined,
                     validator: (val) {
@@ -225,7 +380,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   // Submit Button
                   CustomButton(
-                    text: 'Daftar Sekarang',
+                    text: isSiswa ? 'Daftar sebagai Siswa' : 'Daftar & Buka Stand',
                     isLoading: _isLoading,
                     onPressed: _handleRegister,
                   ),

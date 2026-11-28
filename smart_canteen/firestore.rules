@@ -20,7 +20,7 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.role == 'siswa'
+        && (request.resource.data.role == 'siswa' || request.resource.data.role == 'penjual')
         && request.resource.data.keys().hasOnly([
           'nama', 'email', 'role', 'kelas', 'standId', 'createdAt', 'updatedAt'
         ]);
@@ -40,7 +40,9 @@ service cloud.firestore {
       allow read: if signedIn();
       // Hanya penjual penanggung jawab yang boleh mengupdate status buka/tutup standnya
       allow update: if isSeller() && resource.data.penjualId == request.auth.uid;
-      allow create, delete: if false; // Stand didaftarkan oleh admin
+      // Penjual baru boleh mendaftarkan stand miliknya
+      allow create: if signedIn() && request.resource.data.penjualId == request.auth.uid;
+      allow delete: if false;
     }
 
     // 3. Koleksi Menus
